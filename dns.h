@@ -41,7 +41,7 @@ typedef struct {
 
 typedef struct __attribute__ ((__packed__)) {
 	unsigned short type;
-	unsigned short class;
+	unsigned short _class;
 	unsigned int ttl;
 	unsigned short data_len;
 } dns_rrhdr;
