@@ -15,6 +15,8 @@ void listen_on_socket(int port_number);
  *
  * message: pointer to the start of the dns messege.
  *     Caller maintains ownership of *message.
+ * domains: vector to be populated with the domains that are being queried for
+ *      in this message.
  *
  * returns a pointer to the end of the dns message (where data can
  *      be appended to be sent as a response)
@@ -22,7 +24,7 @@ void listen_on_socket(int port_number);
  *  This may throw a DnsFormatException if the message is malformated 
  *      or is not a query
  */
-char *parse_dns_request(dns_header *message);
+char *parse_dns_request(dns_header *message, vector<string> &domains);
 
 /* This reads out the addresses that need IP addresses from the question 
  * section of a dns request. 

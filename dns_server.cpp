@@ -68,14 +68,13 @@ char *get_queries_from_question_section(char *question_section,
     return question_section;
 }
 
-char *parse_dns_request(dns_header *message){
+char *parse_dns_request(dns_header *message, vector<string> &domains){
     if (! message->qr == 0) {
         throw new DnsFormatException("DNS message is not a query");
     }
     // We need a pointer to the question section of the DNS message.
     // This starts at the next byte after the end of the header.
     char *question = (char*)((void*)&message->ar_count) + sizeof(short);
-    vector<string> domains;
     question = get_queries_from_question_section(question, 
             ntohs(message->qd_count),
             domains);
@@ -125,7 +124,8 @@ void listen_on_socket(int port_number) {
         recv_data[bytes_read] = '\0';
         dns_header *header = (dns_header*) recv_data;
         try{
-            char *end_of_message = parse_dns_request(header);
+            vector<string> domains;
+            char *end_of_message = parse_dns_request(header, domains);
             // TODO: build reply and append it to message;
         }catch (DnsFormatException e) {
             fprintf(stderr, "Recieved something that was not a query\n");
