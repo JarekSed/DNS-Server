@@ -17,6 +17,7 @@
 #include "dns.h"
 // function prototypes
 #include "dns_server.h"
+#include "exceptions.h"
 
 using namespace std;
 
@@ -25,8 +26,8 @@ int main() {
 }
 
 char *get_queries_from_question_section(char *question_section, 
-                                        const int num_queries,
-                                        vector<string> &queries) {
+        const int num_queries,
+        vector<string> &queries) {
     // Loop through all of our queries.
     for(int i =0; i < num_queries; i++){
         printf("We are looking at query %d\n",i);
@@ -55,25 +56,31 @@ char *get_queries_from_question_section(char *question_section,
         if (address.length() > 0){
             address.resize(address.length() -1 );
         }
+        dns_question *question_fields = (dns_question*) ++question_section;
         cout << "We seem to have gotten a request for " << address << endl;
-        queries.push_back(address);
+        if (ntohs(question_fields->qtype) == 1 
+                && ntohs(question_fields->qclass) == 1) {
+            queries.push_back(address);
+        }
+        // After we have the address, move past the type and class fields.
+        question_section += sizeof(dns_question);
     }
     return question_section;
 }
 
-ErrorCode parse_dns_request(dns_header *message){
+char *parse_dns_request(dns_header *message){
     if (! message->qr == 0) {
-        return NOT_DNS_QUERY;
+        throw new DnsFormatException("DNS message is not a query");
     }
     // We need a pointer to the question section of the DNS message.
     // This starts at the next byte after the end of the header.
     char *question = (char*)((void*)&message->ar_count) + sizeof(short);
     vector<string> domains;
     question = get_queries_from_question_section(question, 
-                                                 ntohs(message->qd_count),
-                                                 domains);
-    
-   return NO_ERROR;
+            ntohs(message->qd_count),
+            domains);
+
+    return question;
 }
 
 void listen_on_socket(int port_number) {
@@ -95,7 +102,7 @@ void listen_on_socket(int port_number) {
     bzero(&(server_addr.sin_zero),8);
 
     if (bind(sock,(struct sockaddr *)&server_addr,
-             sizeof(struct sockaddr)) == -1)
+                sizeof(struct sockaddr)) == -1)
     {
         fprintf(stderr, "Failed to bind socket to port %d\n", port_number);
         exit(2);
@@ -109,7 +116,7 @@ void listen_on_socket(int port_number) {
     // Loop forever, waiting for DNS queries.
     while (1) {
         bytes_read = recvfrom(sock,recv_data,BUFFER_SIZE-1,0,
-                              (struct sockaddr *)&client_addr, &addr_len);
+                (struct sockaddr *)&client_addr, &addr_len);
         if( bytes_read == -1) {
             fprintf(stderr, "Error reading from socket: %s\n",strerror(errno));
             continue;
@@ -117,15 +124,11 @@ void listen_on_socket(int port_number) {
 
         recv_data[bytes_read] = '\0';
         dns_header *header = (dns_header*) recv_data;
-        ErrorCode err = parse_dns_request(header);
-
-        switch(err) {
-            case NOT_DNS_QUERY:
-                fprintf(stderr, "Recieved something that was not a query\n");
-                break;
-            // TODO: send response.
-            case NO_ERROR:
-                break;
+        try{
+            char *end_of_message = parse_dns_request(header);
+            // TODO: build reply and append it to message;
+        }catch (DnsFormatException e) {
+            fprintf(stderr, "Recieved something that was not a query\n");
         }
     }
 }

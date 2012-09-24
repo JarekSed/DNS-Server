@@ -16,16 +16,19 @@ void listen_on_socket(int port_number);
  * message: pointer to the start of the dns messege.
  *     Caller maintains ownership of *message.
  *
- * returns NO_ERROR on success, ERR_NOT_DNS_QUERY if message is not a dns query,
- *  and ERR_MESSAGE_BUFFER_TOO_SMALL if adding the answer section causes
- *  *message to grow to more than BUFFER_SIZE bytes.
+ * returns a pointer to the end of the dns message (where data can
+ *      be appended to be sent as a response)
+ *
+ *  This may throw a DnsFormatException if the message is malformated 
+ *      or is not a query
  */
-ErrorCode parse_dns_request(dns_header *message);
+char *parse_dns_request(dns_header *message);
 
 /* This reads out the addresses that need IP addresses from the question 
  * section of a dns request. 
  *
- * question_section: pointer to the start of the question section.
+ * question_section: pointer to the start of the question section. 
+ *  Caller maintains ownership of question_section.
  * num_queries: how many queries are contained in the question section.
  * queries: vector that will be populated with the domains from the question section.
  */
