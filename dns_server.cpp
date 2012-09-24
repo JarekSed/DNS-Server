@@ -68,6 +68,10 @@ ErrorCode parse_dns_request(dns_header *message){
     // We need a pointer to the question section of the DNS message.
     // This starts at the next byte after the end of the header.
     char *question = (char*)((void*)&message->ar_count) + sizeof(short);
+    vector<string> domains;
+    question = get_queries_from_question_section(question, 
+                                                 ntohs(message->qd_count),
+                                                 domains);
     
    return NO_ERROR;
 }
