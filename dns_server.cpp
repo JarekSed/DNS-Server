@@ -28,12 +28,13 @@ void usage() {
 
 int main(int argc, char* argv[]) {
     int port = DEFAULT_PORT;
-    string host_file;
+    string host_file = DEFAULT_HOST_FILE;
     int c;
     while ((c = getopt (argc, argv, "f:p:")) != -1)
         switch (c)
         {
             case 'f':
+                host_file = optarg;
                 break;
             case 'p':
                 port = atoi(optarg);
@@ -46,8 +47,9 @@ int main(int argc, char* argv[]) {
                 usage();
                 return 1;
         }
-
     DNS_Server server;
+
+    server.read_hosts_file(host_file);
 
     server.listen_on_socket(port);
 }
@@ -109,15 +111,38 @@ char *DNS_Server::parse_dns_request(dns_header *message, vector<string> &domains
     return question;
 }
 
-void read_hosts_file(string host_file_path, unordered_map<string, int> lookup_table) {
+void DNS_Server::read_hosts_file(string host_file_path) {
     ifstream host_file;
     host_file.open(host_file_path, ios::in);
     if (!host_file) {
         throw new FormatException("Error opening " + host_file_path + ": " + strerror(errno));
     }
-
+    string line;
+    string domain;
+    string address;
+    while (!host_file.eof()) {
+        getline(host_file, line);
+        // Trim out everything after # 
+        line = line.substr(0,line.find("#",0));
+        stringstream line_stream(line);
+        // We should have exactly 2 fields, domain and address
+        domain.clear(); 
+        address.clear(); 
+        line_stream >> domain;
+        line_stream >> address;
+        cout << "The address is '" << address << "' and the domain is '" << domain << "'" << endl;
+        if (!address.empty()) {
+            int address_int;
+            if (inet_pton(AF_INET, address.c_str(), &address_int)){
+                cout << "converted the address to " << address_int << endl;
+                // TODO: check if key exists, first
+                this->lookup_table[domain] = address_int;
+            } else {
+                throw new FormatException("Address " + address + " is not a valid IPv4 address");
+            }
+        }
+    }
     host_file.close();
-
 }
 
 void DNS_Server::listen_on_socket(int port_number) {

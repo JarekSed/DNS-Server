@@ -15,7 +15,7 @@ class DNS_Server {
          *
          * On errors, throws exception
          */
-        void read_hosts_file(string host_file_path, unordered_map<string, int> lookup_table);
+        void read_hosts_file(string host_file_path);
         
         /* Listens on the given port for DNS requests, and responds to them.
          * This blocks and loops indefinitely.
@@ -53,4 +53,6 @@ class DNS_Server {
          * queries: vector that will be populated with the domains from the question section.
          */
         char *get_queries_from_question_section(char *question_section, const int num_queries, vector<string> &queries);
+
+        unordered_map<string, int> lookup_table;
 };
