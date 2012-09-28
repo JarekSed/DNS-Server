@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS  = -Wall -g -Wextra 
+CFLAGS  = -Wall -g -Wextra -std=c++0x
 
 all: dns_server
 

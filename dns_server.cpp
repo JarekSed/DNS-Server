@@ -10,6 +10,7 @@
 // C++ Includes 
 #include <sstream>
 #include <iostream>
+#include <fstream>
 
 // Include configurable constants for this project
 #include "constants.h"
@@ -21,11 +22,37 @@
 
 using namespace std;
 
-int main() {
-    listen_on_socket(DEFAULT_PORT);
+void usage() {
+    cout << "Usage: ./dns-server [-p port] [-h host_file]" << endl;
 }
 
-char *get_queries_from_question_section(char *question_section, 
+int main(int argc, char* argv[]) {
+    int port = DEFAULT_PORT;
+    string host_file;
+    int c;
+    while ((c = getopt (argc, argv, "f:p:")) != -1)
+        switch (c)
+        {
+            case 'f':
+                break;
+            case 'p':
+                port = atoi(optarg);
+                if (port < 1) {
+                    cerr << "Error: port must be a positive integer" << endl;
+                    return 1;
+                }
+                break;
+            default:
+                usage();
+                return 1;
+        }
+
+    DNS_Server server;
+
+    server.listen_on_socket(port);
+}
+
+char *DNS_Server::get_queries_from_question_section(char *question_section, 
         const int num_queries,
         vector<string> &queries) {
     // Loop through all of our queries.
@@ -68,9 +95,9 @@ char *get_queries_from_question_section(char *question_section,
     return question_section;
 }
 
-char *parse_dns_request(dns_header *message, vector<string> &domains){
+char *DNS_Server::parse_dns_request(dns_header *message, vector<string> &domains){
     if (! message->qr == 0) {
-        throw new DnsFormatException("DNS message is not a query");
+        throw new FormatException("DNS message is not a query");
     }
     // We need a pointer to the question section of the DNS message.
     // This starts at the next byte after the end of the header.
@@ -82,7 +109,18 @@ char *parse_dns_request(dns_header *message, vector<string> &domains){
     return question;
 }
 
-void listen_on_socket(int port_number) {
+void read_hosts_file(string host_file_path, unordered_map<string, int> lookup_table) {
+    ifstream host_file;
+    host_file.open(host_file_path, ios::in);
+    if (!host_file) {
+        throw new FormatException("Error opening " + host_file_path + ": " + strerror(errno));
+    }
+
+    host_file.close();
+
+}
+
+void DNS_Server::listen_on_socket(int port_number) {
     int sock;
     int bytes_read;
     // Buffer for data we've read from socket.
@@ -91,7 +129,7 @@ void listen_on_socket(int port_number) {
     struct sockaddr_in server_addr , client_addr;
 
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-        fprintf(stderr, "Failed to initialize socket\n");
+        cerr << "Failed to initialize socket: " << strerror(errno) << endl;
         exit(1);
     }
 
@@ -103,7 +141,7 @@ void listen_on_socket(int port_number) {
     if (bind(sock,(struct sockaddr *)&server_addr,
                 sizeof(struct sockaddr)) == -1)
     {
-        fprintf(stderr, "Failed to bind socket to port %d\n", port_number);
+        cerr << "Failed to bind socket to port " << port_number << ": " << strerror(errno) << endl;;
         exit(2);
     }
 
@@ -117,7 +155,7 @@ void listen_on_socket(int port_number) {
         bytes_read = recvfrom(sock,recv_data,BUFFER_SIZE-1,0,
                 (struct sockaddr *)&client_addr, &addr_len);
         if( bytes_read == -1) {
-            fprintf(stderr, "Error reading from socket: %s\n",strerror(errno));
+            cerr << "Error reading from socket: " << strerror(errno) << endl;
             continue;
         }
 
@@ -127,8 +165,8 @@ void listen_on_socket(int port_number) {
             vector<string> domains;
             char *end_of_message = parse_dns_request(header, domains);
             // TODO: build reply and append it to message;
-        }catch (DnsFormatException e) {
-            fprintf(stderr, "Recieved something that was not a query\n");
+        }catch (FormatException e) {
+            cerr << "Could not parse dns request: " << e.what() << endl;
         }
     }
 }
