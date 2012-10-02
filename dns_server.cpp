@@ -239,7 +239,7 @@ void DNS_Server::listen_on_socket(int port_number) {
             header->ra =0;
             header->rcode =0;
             header->an_count = htons(1);
-            int address_response = htonl(lookup_table["ibm.com"]);
+            int address_response = htonl(lookup_table[domains[0]]);
             dns_rrhdr answer_header;
             int size =0;
             char *components = domain_to_components(domains[0], &size);
@@ -252,14 +252,14 @@ void DNS_Server::listen_on_socket(int port_number) {
             int size_of_message_so_far = end_of_message -  (char*)header;
             int new_size = size_of_message_so_far + sizeof(dns_rrhdr);
             // Give our message room to hold the new response values.
-            header = (dns_header*) realloc(header, new_size);
+            //header = (dns_header*) realloc(header, new_size);
             end_of_message = (char*) header  + size_of_message_so_far;
             memcpy(end_of_message, components, size);
             end_of_message += size;
             memcpy(end_of_message, &answer_header, sizeof(dns_rrhdr));
             sendto(sock, header, new_size+2, 0, (sockaddr*) &client_addr, addr_len);
-            delete[] components;
-            free(recv_data);
+            //delete[] components;
+            //free(recv_data);
 
         }catch (FormatException e) {
             cerr << "Could not parse dns request: " << e.what() << endl;
