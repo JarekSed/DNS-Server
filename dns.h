@@ -38,10 +38,10 @@ typedef struct {
 /* DNS resource record format */
 /* The answer, authority, and additional sections all share this format. */
 /* It is prepended with a name and suffixed with additional data */
-
 typedef struct __attribute__ ((__packed__)) {
 	unsigned short type;
 	unsigned short _class;
 	unsigned int ttl;
 	unsigned short data_len;
+	unsigned int data;
 } dns_rrhdr;

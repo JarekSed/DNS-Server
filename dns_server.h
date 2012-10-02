@@ -54,5 +54,19 @@ class DNS_Server {
          */
         char *get_queries_from_question_section(char *question_section, const int num_queries, vector<string> &queries);
 
+        /* Convert domain name to component form.
+         * size will hold the size of the char array that
+         * is returned.
+         */
+        char* domain_to_components(string domain, int *size);
+
+        /* Helper function to tokenize strings
+         *  source: string to be tokenized
+         *  delim: deliminter
+         *  
+         *  returns a vector containing source split by delim
+         */
+        vector<string> inline tokenize(const string &source, const char delim);
+
         unordered_map<string, int> lookup_table;
 };
