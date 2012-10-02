@@ -193,7 +193,7 @@ void DNS_Server::listen_on_socket(int port_number) {
     int sock;
     int bytes_read;
     // Buffer for data we've read from socket.
-    char *recv_data = (char*) malloc(1024);
+    char recv_data[1024];
     // Socket address for local and remote sockets.
     struct sockaddr_in server_addr , client_addr;
 
@@ -221,7 +221,7 @@ void DNS_Server::listen_on_socket(int port_number) {
     printf("\nUDPServer Waiting for client on port %d\n", port_number);
     // Loop forever, waiting for DNS queries.
     while (1) {
-        bytes_read = recvfrom(sock,recv_data,BUFFER_SIZE-1,0,
+        bytes_read = recvfrom(sock,&recv_data,BUFFER_SIZE-1,0,
                 (struct sockaddr *)&client_addr, &addr_len);
         if( bytes_read == -1) {
             cerr << "Error reading from socket: " << strerror(errno) << endl;
@@ -229,7 +229,7 @@ void DNS_Server::listen_on_socket(int port_number) {
         }
 
         recv_data[bytes_read] = '\0';
-        dns_header *header = (dns_header*) recv_data;
+        dns_header *header = (dns_header*) &recv_data;
         try{
             vector<string> domains;
             char *end_of_message = parse_dns_request(header, domains);
@@ -258,7 +258,7 @@ void DNS_Server::listen_on_socket(int port_number) {
             end_of_message += size;
             memcpy(end_of_message, &answer_header, sizeof(dns_rrhdr));
             sendto(sock, header, new_size+2, 0, (sockaddr*) &client_addr, addr_len);
-            //delete[] components;
+            delete[] components;
             //free(recv_data);
 
         }catch (FormatException e) {
