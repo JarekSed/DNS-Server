@@ -239,27 +239,32 @@ void DNS_Server::listen_on_socket(int port_number) {
             header->tc =0;
             header->ra =0;
             header->rcode =0;
-            header->an_count = htons(1);
-            int address_response = htonl(lookup_table[domains[0]]);
-            dns_rrhdr answer_header;
-            int size =0;
-            char *components = domain_to_components(domains[0], &size);
-            answer_header.type = htons(1);
-            answer_header._class = htons(1);
-            // Tell clients that this reply is good for 24 hours.
-            answer_header.ttl=  htonl(86400);
-            answer_header.data_len = htons(4);
-            answer_header.data = htonl(address_response);
-            int size_of_message_so_far = end_of_message -  (char*)header;
-            int new_size = size_of_message_so_far + sizeof(dns_rrhdr);
-            // Give our message room to hold the new response values.
-            //header = (dns_header*) realloc(header, new_size);
-            end_of_message = (char*) header  + size_of_message_so_far;
-            memcpy(end_of_message, components, size);
-            end_of_message += size;
-            memcpy(end_of_message, &answer_header, sizeof(dns_rrhdr));
-            sendto(sock, header, new_size+2, 0, (sockaddr*) &client_addr, addr_len);
-            delete[] components;
+            header->an_count = 0;
+            int size_of_message_so_far = 0;
+            for (size_t i =0; i < domains.size(); i++) {
+                int address_response = htonl(lookup_table[domains[i]]);
+                header->an_count++;
+                dns_rrhdr answer_header;
+                int size = 0;
+                char *components = domain_to_components(domains[i], &size);
+                answer_header.type = htons(1);
+                answer_header._class = htons(1);
+                // Tell clients that this reply is good for 24 hours.
+                answer_header.ttl=  htonl(86400);
+                answer_header.data_len = htons(4);
+                answer_header.data = htonl(address_response);
+                size_of_message_so_far = end_of_message -  (char*)header;
+                end_of_message = (char*) header  + size_of_message_so_far;
+                size_of_message_so_far += sizeof(dns_rrhdr);
+                memcpy(end_of_message, components, size);
+                end_of_message += size;
+                size_of_message_so_far+=2;
+                memcpy(end_of_message, &answer_header, sizeof(dns_rrhdr));
+                delete[] components;
+            }
+            header->an_count = htons(header->an_count);
+            // TODO: why are we 2 bytes short?
+            sendto(sock, header, size_of_message_so_far, 0, (sockaddr*) &client_addr, addr_len);
             //free(recv_data);
 
         }catch (FormatException e) {
