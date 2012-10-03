@@ -230,7 +230,6 @@ void DNS_Server::listen_on_socket(int port_number) {
 
         recv_data[bytes_read] = '\0';
         dns_header *header = (dns_header*) &recv_data;
-        // TODO: check everything, not just first query.
         try{
             vector<string> domains;
             char *end_of_message = parse_dns_request(header, domains);
