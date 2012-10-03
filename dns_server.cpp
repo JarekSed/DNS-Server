@@ -262,10 +262,7 @@ void DNS_Server::listen_on_socket(int port_number) {
                 delete[] components;
             }
             header->an_count = htons(header->an_count);
-            // TODO: why are we 2 bytes short?
             sendto(sock, header, size_of_message_so_far, 0, (sockaddr*) &client_addr, addr_len);
-            //free(recv_data);
-
         }catch (FormatException e) {
             // TODO: return dns error message.
             cerr << "Could not parse dns request: " << e.what() << endl;
