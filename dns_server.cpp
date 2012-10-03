@@ -7,7 +7,8 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-// C++ Includes 
+
+// C++ Includes
 #include <sstream>
 #include <iostream>
 #include <fstream>
@@ -16,7 +17,7 @@
 #include "constants.h"
 // Header defining structures for parsing DNS requests
 #include "dns.h"
-// function prototypes
+// function prototypes and dns server class definition
 #include "dns_server.h"
 #include "exceptions.h"
 
@@ -33,45 +34,45 @@ int main(int argc, char* argv[]) {
     while ((c = getopt (argc, argv, "f:p:")) != -1)
         switch (c)
         {
-            case 'f':
-                host_file = optarg;
-                break;
-            case 'p':
-                port = atoi(optarg);
-                if (port < 1) {
-                    cerr << "Error: port must be a positive integer" << endl;
-                    return 1;
-                }
-                break;
-            default:
-                usage();
+        case 'f':
+            host_file = optarg;
+            break;
+        case 'p':
+            port = atoi(optarg);
+            if (port < 1) {
+                cerr << "Error: port must be a positive integer" << endl;
                 return 1;
+            }
+            break;
+        default:
+            usage();
+            return 1;
         }
     DNS_Server server;
-    try{
+    try {
         server.read_hosts_file(host_file);
     } catch (const FormatException &e) {
         cerr << "Error parsing hosts file: " << e.what() << endl;
-        return 2; 
+        return 2;
     }
 
     server.listen_on_socket(port);
 }
 
-char *DNS_Server::get_queries_from_question_section(char *question_section, 
+char *DNS_Server::get_queries_from_question_section(char *question_section,
         const int num_queries,
         vector<string> &queries) throw (FormatException) {
     // Loop through all of our queries.
-    for(int i =0; i < num_queries; i++){
+    for(int i =0; i < num_queries; i++) {
         // We use a stringstream to build the address char by char.
         stringstream query_name;
 
         // We are going to process each section of the network address.
-        // This loops runs until it finds a section with length 0, 
+        // This loops runs until it finds a section with length 0,
         // signifying the end of this address.
         while(*question_section != '\0') {
             // Length of the this section of the network address is the first byte.
-            char length = *question_section++; 
+            char length = *question_section++;
             // This loop grabs all chars in this section of the address, and
             // adds them to the stringstream. After it ends, *question_section is pointing
             // at the length of the next section.
@@ -85,15 +86,14 @@ char *DNS_Server::get_queries_from_question_section(char *question_section,
         string address = query_name.str();
         // If the address had at least one section, we have a trailing period
         // that needs to be trimmed.
-        if (address.length() > 0){
+        if (address.length() > 0) {
             address.resize(address.length() -1 );
         }
         dns_question *question_fields = (dns_question*) ++question_section;
-        if (ntohs(question_fields->qtype) == 1 
+        if (ntohs(question_fields->qtype) == 1
                 && ntohs(question_fields->qclass) == 1) {
             queries.push_back(address);
         } else {
-            cerr << "I'm doing shit now" << endl;
             throw FormatException("Unsupported type or class requested");
         }
         // After we have the address, move past the type and class fields.
@@ -108,40 +108,37 @@ char *DNS_Server::domain_to_components(string domain, int *size) {
     str[0] = 0xC0;
     str[1] = 0x0C;
     return str;
-/*
-    // We have 1 extra byte byte per section, and we get rid of a '.' between all sections.
-    // This means we have 1 extra char in the component form. We also need room for the trailing 0,
-    // so length = length of string + 2.
-    *size = domain.length()+2;
-    vector<string> split = tokenize(domain, '.');
-    char *str = new char[*size];
-    unsigned int cur_index = 0;
-    for (unsigned int i =0; i < split.size(); i++) {
-        str[cur_index++] = split.at(i).size();
-        strcpy(str + cur_index, split.at(i).c_str());
-        cur_index += split.at(i).size();
-    }
-    return str;
-*/
+    /*
+        // We have 1 extra byte byte per section, and we get rid of a '.' between all sections.
+        // This means we have 1 extra char in the component form. We also need room for the trailing 0,
+        // so length = length of string + 2.
+        *size = domain.length()+2;
+        vector<string> split = tokenize(domain, '.');
+        char *str = new char[*size];
+        unsigned int cur_index = 0;
+        for (unsigned int i =0; i < split.size(); i++) {
+            str[cur_index++] = split.at(i).size();
+            strcpy(str + cur_index, split.at(i).c_str());
+            cur_index += split.at(i).size();
+        }
+        return str;
+    */
 }
 
-vector<string> inline DNS_Server::tokenize (const string &source, const char delimiter){
+vector<string> inline DNS_Server::tokenize (const string &source, const char delimiter) {
     vector<string> results;
 
     size_t prev = 0;
     size_t next = 0;
 
-    while ((next = source.find_first_of(delimiter, prev)) != string::npos)
-    {
-        if (next - prev != 0)
-        {
+    while ((next = source.find_first_of(delimiter, prev)) != string::npos) {
+        if (next - prev != 0) {
             results.push_back(source.substr(prev, next - prev));
         }
         prev = next + 1;
     }
 
-    if (prev < source.size())
-    {
+    if (prev < source.size()){
         results.push_back(source.substr(prev));
     }
 
@@ -155,11 +152,11 @@ char *DNS_Server::parse_dns_request(dns_header *message, vector<string> &domains
     // We need a pointer to the question section of the DNS message.
     // This starts at the next byte after the end of the header.
     char *question = (char*)((void*)&message->ar_count) + sizeof(short);
-    try{
-        question = get_queries_from_question_section(question, 
-                ntohs(message->qd_count),
-                domains);
-    } catch (const FormatException &e){
+    try {
+        question = get_queries_from_question_section(question,
+                   ntohs(message->qd_count),
+                   domains);
+    } catch (const FormatException &e) {
         throw e;
     }
     return question;
@@ -176,17 +173,17 @@ void DNS_Server::read_hosts_file(string host_file_path) throw(FormatException) {
     string address;
     while (!host_file.eof()) {
         getline(host_file, line);
-        // Trim out everything after # 
+        // Trim out everything after #
         line = line.substr(0,line.find("#",0));
         stringstream line_stream(line);
         // We should have exactly 2 fields, domain and address
-        domain.clear(); 
-        address.clear(); 
+        domain.clear();
+        address.clear();
         line_stream >> domain;
         line_stream >> address;
         if (!address.empty()) {
             int address_int;
-            if (inet_pton(AF_INET, address.c_str(), &address_int)){
+            if (inet_pton(AF_INET, address.c_str(), &address_int)) {
                 if (this->lookup_table.find(domain) == this->lookup_table.end()) {
                     this->lookup_table[domain] = address_int;
                 } else {
@@ -219,7 +216,7 @@ void DNS_Server::listen_on_socket(int port_number) {
     bzero(&(server_addr.sin_zero),8);
 
     if (bind(sock,(struct sockaddr *)&server_addr,
-                sizeof(struct sockaddr)) == -1)
+             sizeof(struct sockaddr)) == -1)
     {
         cerr << "Failed to bind socket to port " << port_number << ": " << strerror(errno) << endl;;
         exit(2);
@@ -233,7 +230,7 @@ void DNS_Server::listen_on_socket(int port_number) {
     // Loop forever, waiting for DNS queries.
     while (1) {
         bytes_read = recvfrom(sock,&recv_data,BUFFER_SIZE-1,0,
-                (struct sockaddr *)&client_addr, &addr_len);
+                              (struct sockaddr *)&client_addr, &addr_len);
         if( bytes_read == -1) {
             cerr << "Error reading from socket: " << strerror(errno) << endl;
             continue;
@@ -241,7 +238,7 @@ void DNS_Server::listen_on_socket(int port_number) {
 
         recv_data[bytes_read] = '\0';
         dns_header *header = (dns_header*) &recv_data;
-        try{
+        try {
             vector<string> domains;
             char *end_of_message = parse_dns_request(header, domains);
             header->qr = 1;
@@ -277,7 +274,7 @@ void DNS_Server::listen_on_socket(int port_number) {
             }
             header->an_count = htons(header->an_count);
             sendto(sock, header, size_of_message_so_far, 0, (sockaddr*) &client_addr, addr_len);
-        }catch (const FormatException &e) {
+        } catch (const FormatException &e) {
             header->rcode = 4;
             sendto(sock, header, sizeof(dns_header), 0, (sockaddr*) &client_addr, addr_len);
             cerr << "Could not parse dns request: " << e.what() << endl;
