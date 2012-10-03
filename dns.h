@@ -6,6 +6,7 @@
 /* this is the main header of a DNS message */
 /* it is followed by zero or more questions, answers, authorities, and additional sections */
 /* the last four count fields tell you how many of each to expect */
+#pragma once
 
 typedef struct {
 	unsigned short id;

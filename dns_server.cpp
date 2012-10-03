@@ -48,18 +48,21 @@ int main(int argc, char* argv[]) {
                 return 1;
         }
     DNS_Server server;
-
-    server.read_hosts_file(host_file);
+    try{
+        server.read_hosts_file(host_file);
+    } catch (const FormatException &e) {
+        cerr << "Error parsing hosts file: " << e.what() << endl;
+        return 2; 
+    }
 
     server.listen_on_socket(port);
 }
 
 char *DNS_Server::get_queries_from_question_section(char *question_section, 
         const int num_queries,
-        vector<string> &queries) {
+        vector<string> &queries) throw (FormatException) {
     // Loop through all of our queries.
     for(int i =0; i < num_queries; i++){
-        printf("We are looking at query %d\n",i);
         // We use a stringstream to build the address char by char.
         stringstream query_name;
 
@@ -86,10 +89,12 @@ char *DNS_Server::get_queries_from_question_section(char *question_section,
             address.resize(address.length() -1 );
         }
         dns_question *question_fields = (dns_question*) ++question_section;
-        cout << "We seem to have gotten a request for " << address << endl;
         if (ntohs(question_fields->qtype) == 1 
                 && ntohs(question_fields->qclass) == 1) {
             queries.push_back(address);
+        } else {
+            cerr << "I'm doing shit now" << endl;
+            throw FormatException("Unsupported type or class requested");
         }
         // After we have the address, move past the type and class fields.
         question_section += sizeof(dns_question);
@@ -143,25 +148,28 @@ vector<string> inline DNS_Server::tokenize (const string &source, const char del
     return results;
 }
 
-char *DNS_Server::parse_dns_request(dns_header *message, vector<string> &domains){
+char *DNS_Server::parse_dns_request(dns_header *message, vector<string> &domains) throw(FormatException) {
     if (! message->qr == 0) {
-        throw new FormatException("DNS message is not a query");
+        throw FormatException("DNS message is not a query");
     }
     // We need a pointer to the question section of the DNS message.
     // This starts at the next byte after the end of the header.
     char *question = (char*)((void*)&message->ar_count) + sizeof(short);
-    question = get_queries_from_question_section(question, 
-            ntohs(message->qd_count),
-            domains);
-
+    try{
+        question = get_queries_from_question_section(question, 
+                ntohs(message->qd_count),
+                domains);
+    } catch (const FormatException &e){
+        throw e;
+    }
     return question;
 }
 
-void DNS_Server::read_hosts_file(string host_file_path) {
+void DNS_Server::read_hosts_file(string host_file_path) throw(FormatException) {
     ifstream host_file;
     host_file.open(host_file_path, ios::in);
     if (!host_file) {
-        throw new FormatException("Error opening " + host_file_path + ": " + strerror(errno));
+        throw FormatException("Error opening " + host_file_path + ": " + strerror(errno));
     }
     string line;
     string domain;
@@ -179,10 +187,13 @@ void DNS_Server::read_hosts_file(string host_file_path) {
         if (!address.empty()) {
             int address_int;
             if (inet_pton(AF_INET, address.c_str(), &address_int)){
-                // TODO: check if key exists, first
-                this->lookup_table[domain] = address_int;
+                if (this->lookup_table.find(domain) == this->lookup_table.end()) {
+                    this->lookup_table[domain] = address_int;
+                } else {
+                    throw FormatException("Multiple entries for domain " + domain);
+                }
             } else {
-                throw new FormatException("Address " + address + " is not a valid IPv4 address");
+                throw FormatException("Address " + address + " is not a valid IPv4 address");
             }
         }
     }
@@ -239,20 +250,23 @@ void DNS_Server::listen_on_socket(int port_number) {
             header->ra =0;
             header->rcode =0;
             header->an_count = 0;
-            int size_of_message_so_far = 0;
+            int size_of_message_so_far = end_of_message -  (char*)header;
             for (size_t i =0; i < domains.size(); i++) {
                 int address_response = htonl(lookup_table[domains[i]]);
+                if (! address_response) {
+                    continue;
+                }
                 header->an_count++;
                 dns_rrhdr answer_header;
                 int size = 0;
                 char *components = domain_to_components(domains[i], &size);
+
                 answer_header.type = htons(1);
                 answer_header._class = htons(1);
                 // Tell clients that this reply is good for 24 hours.
                 answer_header.ttl=  htonl(86400);
                 answer_header.data_len = htons(4);
                 answer_header.data = htonl(address_response);
-                size_of_message_so_far = end_of_message -  (char*)header;
                 end_of_message = (char*) header  + size_of_message_so_far;
                 size_of_message_so_far += sizeof(dns_rrhdr);
                 memcpy(end_of_message, components, size);
@@ -263,8 +277,9 @@ void DNS_Server::listen_on_socket(int port_number) {
             }
             header->an_count = htons(header->an_count);
             sendto(sock, header, size_of_message_so_far, 0, (sockaddr*) &client_addr, addr_len);
-        }catch (FormatException e) {
-            // TODO: return dns error message.
+        }catch (const FormatException &e) {
+            header->rcode = 4;
+            sendto(sock, header, sizeof(dns_header), 0, (sockaddr*) &client_addr, addr_len);
             cerr << "Could not parse dns request: " << e.what() << endl;
         }
     }
