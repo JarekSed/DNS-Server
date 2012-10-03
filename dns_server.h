@@ -63,7 +63,7 @@ private:
      */
     char* domain_to_components(string domain, int *size);
 
-    /* Helper function to tokenize strings.
+/* Helper function to tokenize strings.
      * From http://stackoverflow.com/questions/10051679/c-tokenize-string
      *  source: string to be tokenized
      *  delim: deliminter

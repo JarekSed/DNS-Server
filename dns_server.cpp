@@ -102,13 +102,8 @@ char *DNS_Server::get_queries_from_question_section(char *question_section,
     return question_section;
 }
 
+
 char *DNS_Server::domain_to_components(string domain, int *size) {
-    *size =2;
-    char *str = new char[*size];
-    str[0] = 0xC0;
-    str[1] = 0x0C;
-    return str;
-    /*
         // We have 1 extra byte byte per section, and we get rid of a '.' between all sections.
         // This means we have 1 extra char in the component form. We also need room for the trailing 0,
         // so length = length of string + 2.
@@ -122,7 +117,6 @@ char *DNS_Server::domain_to_components(string domain, int *size) {
             cur_index += split.at(i).size();
         }
         return str;
-    */
 }
 
 vector<string> inline DNS_Server::tokenize (const string &source, const char delimiter) {
@@ -265,26 +259,25 @@ void DNS_Server::listen_on_socket(int port_number) {
             int size_of_message_so_far = end_of_message -  (char*)header;
             for (size_t i =0; i < domains.size(); i++) {
                 int address_response = htonl(lookup_table[domains[i]]);
+                // If we don't have an entry for this domain, just skip it.
                 if (! address_response) {
                     continue;
                 }
                 header->an_count++;
                 dns_rrhdr answer_header;
-                int size = 0;
-                char *components = domain_to_components(domains[i], &size);
-
                 answer_header.type = htons(1);
                 answer_header._class = htons(1);
                 // Tell clients that this reply is good for 24 hours.
                 answer_header.ttl=  htonl(86400);
                 answer_header.data_len = htons(4);
                 answer_header.data = htonl(address_response);
-                end_of_message = (char*) header  + size_of_message_so_far;
+
+                int size = 0;
+                char *components = domain_to_components(domains[i], &size);
+                memcpy((char*)header + size_of_message_so_far, components, size);
+                size_of_message_so_far+=size;
+                memcpy((char*)header + size_of_message_so_far, &answer_header, sizeof(dns_rrhdr));
                 size_of_message_so_far += sizeof(dns_rrhdr);
-                memcpy(end_of_message, components, size);
-                end_of_message += size;
-                size_of_message_so_far+=2;
-                memcpy(end_of_message, &answer_header, sizeof(dns_rrhdr));
                 delete[] components;
             }
             header->an_count = htons(header->an_count);
