@@ -168,9 +168,14 @@ void DNS_Server::read_hosts_file(string host_file_path) throw(FormatException) {
     if (!host_file) {
         throw FormatException("Error opening " + host_file_path + ": " + strerror(errno));
     }
+    // Used for each line in the input file.
     string line;
+    // Used to get the domain off each line.
     string domain;
+    // Used to get the address off each line.
     string address;
+    // Used to check if any non-whitespace chars follow the address.
+    string trailing_garbage;
     while (!host_file.eof()) {
         getline(host_file, line);
         // Trim out everything after #
@@ -180,7 +185,15 @@ void DNS_Server::read_hosts_file(string host_file_path) throw(FormatException) {
         domain.clear();
         address.clear();
         line_stream >> domain;
+        // This is an empty line, skip it.
+        if (domain.empty()) {
+            continue;
+        }
         line_stream >> address;
+        line_stream >> trailing_garbage;
+        if (! trailing_garbage.empty()) {
+            throw FormatException("Line has more than 2 fields: " + line);
+        }
         if (!address.empty()) {
             int address_int;
             if (inet_pton(AF_INET, address.c_str(), &address_int)) {
@@ -192,6 +205,8 @@ void DNS_Server::read_hosts_file(string host_file_path) throw(FormatException) {
             } else {
                 throw FormatException("Address " + address + " is not a valid IPv4 address");
             }
+        } else {
+                throw FormatException("Domain " + domain + " does not have an IP address");
         }
     }
     host_file.close();
