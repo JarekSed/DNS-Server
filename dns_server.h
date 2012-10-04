@@ -63,13 +63,13 @@ private:
      */
     char* domain_to_components(string domain, int *size);
 
-/* Helper function to tokenize strings.
-     * From http://stackoverflow.com/questions/10051679/c-tokenize-string
-     *  source: string to be tokenized
-     *  delim: deliminter
-     *
-     *  returns a vector containing source split by delim
-     */
+    /* Helper function to tokenize strings.
+         * From http://stackoverflow.com/questions/10051679/c-tokenize-string
+         *  source: string to be tokenized
+         *  delim: deliminter
+         *
+         *  returns a vector containing source split by delim
+         */
     vector<string> inline tokenize(const string &source, const char delim);
 
     unordered_map<string, int> lookup_table;

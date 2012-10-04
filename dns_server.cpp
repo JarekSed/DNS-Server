@@ -104,19 +104,19 @@ char *DNS_Server::get_queries_from_question_section(char *question_section,
 
 
 char *DNS_Server::domain_to_components(string domain, int *size) {
-        // We have 1 extra byte byte per section, and we get rid of a '.' between all sections.
-        // This means we have 1 extra char in the component form. We also need room for the trailing 0,
-        // so length = length of string + 2.
-        *size = domain.length()+2;
-        vector<string> split = tokenize(domain, '.');
-        char *str = new char[*size];
-        unsigned int cur_index = 0;
-        for (unsigned int i =0; i < split.size(); i++) {
-            str[cur_index++] = split.at(i).size();
-            strcpy(str + cur_index, split.at(i).c_str());
-            cur_index += split.at(i).size();
-        }
-        return str;
+    // We have 1 extra byte byte per section, and we get rid of a '.' between all sections.
+    // This means we have 1 extra char in the component form. We also need room for the trailing 0,
+    // so length = length of string + 2.
+    *size = domain.length()+2;
+    vector<string> split = tokenize(domain, '.');
+    char *str = new char[*size];
+    unsigned int cur_index = 0;
+    for (unsigned int i =0; i < split.size(); i++) {
+        str[cur_index++] = split.at(i).size();
+        strcpy(str + cur_index, split.at(i).c_str());
+        cur_index += split.at(i).size();
+    }
+    return str;
 }
 
 vector<string> inline DNS_Server::tokenize (const string &source, const char delimiter) {
@@ -132,7 +132,7 @@ vector<string> inline DNS_Server::tokenize (const string &source, const char del
         prev = next + 1;
     }
 
-    if (prev < source.size()){
+    if (prev < source.size()) {
         results.push_back(source.substr(prev));
     }
 
@@ -200,7 +200,7 @@ void DNS_Server::read_hosts_file(string host_file_path) throw(FormatException) {
                 throw FormatException("Address " + address + " is not a valid IPv4 address");
             }
         } else {
-                throw FormatException("Domain " + domain + " does not have an IP address");
+            throw FormatException("Domain " + domain + " does not have an IP address");
         }
     }
     host_file.close();
