@@ -54,7 +54,7 @@ private:
      * queries: vector that will be populated with the domains from the question section.
      */
     char *get_queries_from_question_section(char *question_section,
-                                            const int num_queries,
+                                            const unsigned short num_queries,
                                             vector<string> &queries) throw(FormatException);
 
     /* Convert domain name to component form.

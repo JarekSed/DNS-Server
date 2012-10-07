@@ -60,10 +60,10 @@ int main(int argc, char* argv[]) {
 }
 
 char *DNS_Server::get_queries_from_question_section(char *question_section,
-        const int num_queries,
+        const unsigned short num_queries,
         vector<string> &queries) throw (FormatException) {
     // Loop through all of our queries.
-    for(int i =0; i < num_queries; i++) {
+    for(unsigned short i =0; i < num_queries; i++) {
         // We use a stringstream to build the address char by char.
         stringstream query_name;
 
