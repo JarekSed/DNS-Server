@@ -261,7 +261,10 @@ void DNS_Server::listen_on_socket(int port_number) {
                 int address_response = htonl(lookup_table[domains[i]]);
                 // If we don't have an entry for this domain, just skip it.
                 if (! address_response) {
-                    continue;
+                    // we didn't find this name, set header to NameError
+                    header->rcode = 3;
+                    // No point in processing other questions once we decide to return error...
+                    break;
                 }
                 header->an_count++;
                 dns_rrhdr answer_header;
